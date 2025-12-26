@@ -4,11 +4,14 @@
   "description": "Tower Defense game with TypeScript and Canvas API",
   "type": "module",
   "scripts": {
+    "dev": "concurrently \"npm:watch\" \"npm:serve:only\"",
     "build": "tsc",
     "watch": "tsc --watch",
-    "serve": "npm run build && npx http-server -p 8000"
+    "serve": "npm run build && npx http-server -p 8000",
+    "serve:only": "npx http-server -p 8000"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "typescript": "^5.3.3"
   }
 }

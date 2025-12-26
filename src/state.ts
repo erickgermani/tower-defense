@@ -13,6 +13,12 @@ export class State {
     public towers: Tower[] = [];
     public projectiles: Projectile[] = [];
 
+    // Placement preview: current tower type selected for placement (null = none)
+    public placementType: import('./types.js').TowerType | null = null;
+    // Mouse position for placement preview (in canvas coordinates)
+    public placementX: number = 0;
+    public placementY: number = 0;
+
     private constructor() {
         this.game = {
             money: 100,

@@ -43,3 +43,24 @@ button:disabled {
     opacity: 0.85;
     font-size: 13px;
 }
+
+.toast {
+    position: fixed;
+    transform: translate(-50%, -50%);
+    background: rgba(30, 40, 60, 0.95);
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(120, 150, 120, 0.12);
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    font-size: 13px;
+    z-index: 9999;
+    transition: opacity 200ms ease, transform 200ms ease;
+    opacity: 1;
+}
+
+.toast.hide {
+    opacity: 0;
+    transform: translate(-50%, -60%);
+}

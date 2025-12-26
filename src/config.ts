@@ -22,7 +22,7 @@ export const towerConfigs: Record<TowerType, TowerConfig> = {
         damage: 14,
         projectileSpeed: 360,
         color: '#3d7a6a',
-        name: 'Torre Básica'
+        name: 'Mago'
     },
     [TowerType.SNIPER]: {
         type: TowerType.SNIPER,
@@ -32,7 +32,7 @@ export const towerConfigs: Record<TowerType, TowerConfig> = {
         damage: 35,
         projectileSpeed: 500,
         color: '#5a4d8a',
-        name: 'Torre Sniper'
+        name: 'Patrulheiro'
     },
     [TowerType.CANNON]: {
         type: TowerType.CANNON,
@@ -42,7 +42,7 @@ export const towerConfigs: Record<TowerType, TowerConfig> = {
         damage: 25,
         projectileSpeed: 280,
         color: '#8a5d3d',
-        name: 'Torre Canhão'
+        name: 'Bruxo'
     }
 };
 
@@ -57,8 +57,8 @@ export const enemyConfigs: Record<EnemyType, EnemyConfig> = {
         baseReward: 8,
         rewardGrowth: 0.5,
         radius: 12,
-        color: '#b85c5c',
-        name: 'Inimigo Básico'
+        color: '#e39595',
+        name: 'Humano'
     },
     [EnemyType.FAST]: {
         type: EnemyType.FAST,
@@ -69,8 +69,8 @@ export const enemyConfigs: Record<EnemyType, EnemyConfig> = {
         baseReward: 12,
         rewardGrowth: 0.8,
         radius: 10,
-        color: '#5cb8b8',
-        name: 'Inimigo Rápido'
+        color: '#3c5151',
+        name: 'Elfo Escuro'
     },
     [EnemyType.TANK]: {
         type: EnemyType.TANK,
@@ -81,7 +81,7 @@ export const enemyConfigs: Record<EnemyType, EnemyConfig> = {
         baseReward: 15,
         rewardGrowth: 1,
         radius: 15,
-        color: '#8a5c8a',
-        name: 'Inimigo Tanque'
+        color: '#00ff40',
+        name: 'Orc'
     }
 };

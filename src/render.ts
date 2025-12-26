@@ -1,8 +1,8 @@
 // Rendering functions
 
 import { State } from './state.js';
-import { path } from './config.js';
-import { clamp } from './utils.js';
+import { path, towerConfigs } from './config.js';
+import { clamp, pointToSegmentDistance, dist } from './utils.js';
 
 export class Renderer {
     private canvas: HTMLCanvasElement;
@@ -22,6 +22,8 @@ export class Renderer {
 
         this.drawPath();
         this.drawWaypoints();
+        // Draw placement preview range if a tower type is selected
+        this.drawPlacementPreview();
         this.drawTowers();
         this.drawEnemies();
         this.drawProjectiles();
@@ -111,7 +113,7 @@ export class Renderer {
     public updateHud(): void {
         this.statsEl.textContent =
             `Dinheiro: ${this.state.game.money} | ` +
-            `Vidas: ${this.state.game.lives} | ` +
+            `Vida: ${this.state.game.lives} | ` +
             `Wave: ${this.state.game.wave} | ` +
             `Inimigos: ${this.state.getEnemyCount()}`;
     }
@@ -124,4 +126,53 @@ export class Renderer {
         const b = Math.min(255, parseInt(hex.substr(4, 2), 16) + 60);
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
+
+    private drawPlacementPreview(): void {
+        const type = this.state.placementType;
+        if (type == null) return;
+        const cfg = towerConfigs[type];
+        const x = this.state.placementX;
+        const y = this.state.placementY;
+
+        // Determine if the placement point is valid: not on path and not overlapping other towers
+        let valid = true;
+        for (let i = 0; i < path.length - 1; i++) {
+            const p1 = path[i];
+            const p2 = path[i + 1];
+            if (pointToSegmentDistance(x, y, p1.x, p1.y, p2.x, p2.y) < 22) {
+                valid = false;
+                break;
+            }
+        }
+        if (valid) {
+            for (const t of this.state.towers) {
+                if (dist(x, y, t.x, t.y) < 24) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+
+        const baseColor = valid ? cfg.color : '#c94a4a';
+
+        // translucent fill
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, cfg.range, 0, Math.PI * 2);
+        this.ctx.fillStyle = `rgba(${hexToRgb(baseColor)}, 0.12)`;
+        this.ctx.fill();
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeStyle = `rgba(${hexToRgb(baseColor)}, 0.28)`;
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
+}
+
+function hexToRgb(hex: string): string {
+    const v = hex.replace('#', '');
+    const num = parseInt(v, 16);
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+    return `${r}, ${g}, ${b}`;
 }
