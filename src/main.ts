@@ -17,9 +17,13 @@ class Game {
     private updater: GameUpdater;
     private renderer: Renderer;
     // selection for tower placement. null means 'none'
-    private selectedTowerType: TowerType | null = TowerType.BASIC;
+    private selectedTowerType: TowerType | null = null;
     // reference to tower panel
     private towerPanelDiv?: HTMLDivElement;
+    // reference to reset button
+    private resetBtn?: HTMLButtonElement;
+    // ensure we only toggle game over UI once
+    private gameOverDisplayed: boolean = false;
 
     constructor() {
         this.canvas = document.getElementById("c") as HTMLCanvasElement;
@@ -59,6 +63,12 @@ class Game {
         nextWaveBtn.addEventListener("click", () => {
             this.waveManager.startNextWave();
         });
+
+        // Reset button (may be hidden in HTML)
+        this.resetBtn = document.getElementById('resetBtn') as HTMLButtonElement | null ?? undefined;
+        if (this.resetBtn) {
+            this.resetBtn.addEventListener('click', () => this.resetGame());
+        }
     }
 
     private handleMouseMove(e: MouseEvent): void {
@@ -253,6 +263,17 @@ class Game {
             this.renderer.draw();
             this.renderer.updateHud();
 
+            // If game over happened, show reset button and disable nextWave
+            if (this.state.game.gameOver && !this.gameOverDisplayed) {
+                this.gameOverDisplayed = true;
+                // disable next wave
+                try { nextWaveBtn.disabled = true; } catch {}
+                // show reset control
+                if (this.resetBtn) {
+                    this.resetBtn.style.display = '';
+                }
+            }
+
             requestAnimationFrame(loop);
         };
 
@@ -271,6 +292,26 @@ class Game {
         // hide and remove after timeout
         setTimeout(() => el.classList.add('hide'), ms - 200);
         setTimeout(() => { try { el.remove(); } catch {} }, ms);
+    }
+
+    // Reset the game state to initial values and restore UI
+    private resetGame(): void {
+        // Reset singleton state
+        this.state.reset();
+        // Recreate managers so timers/counters are fresh
+        this.waveManager = new WaveManager();
+        this.updater = new GameUpdater(this.waveManager);
+        // Reset UI flags
+        this.gameOverDisplayed = false;
+        // Hide reset button
+        if (this.resetBtn) this.resetBtn.style.display = 'none';
+        // Re-enable next wave
+        const nextWaveBtn = document.getElementById("nextWave") as HTMLButtonElement;
+        if (nextWaveBtn) nextWaveBtn.disabled = false;
+        // Clear selected tower and tower panel
+        this.selectedTowerType = null;
+        State.getInstance().placementType = null;
+        this.renderTowerPanel(null);
     }
 }
 

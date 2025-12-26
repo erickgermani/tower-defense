@@ -2,7 +2,7 @@
 
 import { State } from './state.js';
 import { path, towerConfigs } from './config.js';
-import { clamp, validatePlacement, dist } from './utils.js';
+import { clamp, validatePlacement } from './utils.js';
 
 export class Renderer {
     private canvas: HTMLCanvasElement;
@@ -53,8 +53,21 @@ export class Renderer {
 
     private drawTowers(): void {
         for (const tower of this.state.towers) {
-            // highlight selected tower
+            // highlight selected tower: draw its range as a translucent circle + selection ring
             if (this.state.selectedTower === tower) {
+                // draw range (translucent)
+                this.ctx.save();
+                const rgb = hexToRgb(tower.color);
+                this.ctx.beginPath();
+                this.ctx.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2);
+                this.ctx.fillStyle = `rgba(${rgb}, 0.12)`;
+                this.ctx.fill();
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeStyle = `rgba(${rgb}, 0.28)`;
+                this.ctx.stroke();
+                this.ctx.restore();
+
+                // small selection ring
                 this.ctx.save();
                 this.ctx.beginPath();
                 this.ctx.arc(tower.x, tower.y, 16, 0, Math.PI * 2);
@@ -120,7 +133,7 @@ export class Renderer {
         this.ctx.font = "bold 44px system-ui, Arial";
         this.ctx.fillText("GAME OVER", 320, 260);
         this.ctx.font = "16px system-ui, Arial";
-        this.ctx.fillText("Recarregue a página para recomeçar.", 335, 295);
+        this.ctx.fillText("Pressione 'Reiniciar' para jogar novamente.", 335, 295);
     }
 
     public updateHud(): void {

@@ -28,7 +28,7 @@ canvas {
     max-width: 900px;
     width: min(900px, 95vw); /* avoid full-width stretch */
     margin: 8px auto; /* center horizontally with slight top margin */
-    padding: 8px;
+    padding: 8px 0;
     box-sizing: border-box;
 }
 
@@ -154,4 +154,19 @@ button:disabled {
     #panel-top { flex-direction: column; align-items: stretch; }
     #panel-bottom { flex-direction: column; align-items: stretch; }
     #stats { order: 3; width: 100%; text-align: left; }
+}
+
+#selector-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+}
+
+#stats {
+    color: #fff;
+}
+
+#canvas {
+
 }
