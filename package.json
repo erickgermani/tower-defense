@@ -1,0 +1,14 @@
+{
+  "name": "tower-defense",
+  "version": "1.0.0",
+  "description": "Tower Defense game with TypeScript and Canvas API",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "serve": "npm run build && npx http-server -p 8000"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

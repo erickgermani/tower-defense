@@ -1,0 +1,81 @@
+// Game state management
+
+import { GameState } from './types.js';
+import { Enemy } from './entities/Enemy.js';
+import { Tower } from './entities/Tower.js';
+import { Projectile } from './entities/Projectile.js';
+
+export class State {
+    private static instance: State;
+    
+    public game: GameState;
+    public enemies: Enemy[] = [];
+    public towers: Tower[] = [];
+    public projectiles: Projectile[] = [];
+
+    private constructor() {
+        this.game = {
+            money: 100,
+            lives: 20,
+            wave: 0,
+            inWave: false,
+            wavePlan: null,
+            waveSpawnTimer: 0,
+            waveRemaining: 0,
+            gameOver: false,
+        };
+    }
+
+    public static getInstance(): State {
+        if (!State.instance) {
+            State.instance = new State();
+        }
+        return State.instance;
+    }
+
+    public addEnemy(enemy: Enemy): void {
+        this.enemies.push(enemy);
+    }
+
+    public removeEnemy(enemy: Enemy): void {
+        const index = this.enemies.indexOf(enemy);
+        if (index > -1) {
+            this.enemies.splice(index, 1);
+        }
+    }
+
+    public addTower(tower: Tower): void {
+        this.towers.push(tower);
+    }
+
+    public addProjectile(projectile: Projectile): void {
+        this.projectiles.push(projectile);
+    }
+
+    public removeProjectile(projectile: Projectile): void {
+        const index = this.projectiles.indexOf(projectile);
+        if (index > -1) {
+            this.projectiles.splice(index, 1);
+        }
+    }
+
+    public getEnemyCount(): number {
+        return this.enemies.length;
+    }
+
+    public reset(): void {
+        this.game = {
+            money: 100,
+            lives: 20,
+            wave: 0,
+            inWave: false,
+            wavePlan: null,
+            waveSpawnTimer: 0,
+            waveRemaining: 0,
+            gameOver: false,
+        };
+        this.enemies = [];
+        this.towers = [];
+        this.projectiles = [];
+    }
+}

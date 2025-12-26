@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Tower Defense - TypeScript OOP</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <div id="wrap">
+        <div class="hud">
+            <div id="stats"></div>
+            <div>
+                <button id="nextWave">Próxima wave</button>
+            </div>
+        </div>
+        <canvas id="c" width="900" height="540"></canvas>
+        <div class="hint">
+            Selecione o tipo de torre acima. Clique no mapa para construir. Inimigos seguem o caminho.
+        </div>
+    </div>
+
+    <script type="module" src="dist/main.js"></script>
+</body>
+
+</html>
