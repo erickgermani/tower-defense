@@ -18,6 +18,8 @@ export class State {
     // Mouse position for placement preview (in canvas coordinates)
     public placementX: number = 0;
     public placementY: number = 0;
+    // Selected placed tower for upgrade/sell actions
+    public selectedTower: import('./entities/Tower.js').Tower | null = null;
 
     private constructor() {
         this.game = {

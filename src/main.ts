@@ -18,6 +18,9 @@ class Game {
     private renderer: Renderer;
     // selection for tower placement. null means 'none'
     private selectedTowerType: TowerType | null = TowerType.BASIC;
+    // references to tower selector and panel
+    private towerSelectorDiv?: HTMLDivElement;
+    private towerPanelDiv?: HTMLDivElement;
 
     constructor() {
         this.canvas = document.getElementById("c") as HTMLCanvasElement;
@@ -64,6 +67,98 @@ class Game {
         this.state.placementY = y;
     }
 
+    private showTowerMenu(tower: import('./entities/Tower.js').Tower) {
+        // use fixed panel in HUD for tower actions
+        this.state.selectedTower = tower;
+        if (!this.towerPanelDiv) return;
+        const panel = this.towerPanelDiv;
+        panel.innerHTML = '';
+        panel.style.display = 'flex';
+        panel.style.flexDirection = 'column';
+        panel.style.background = '#1b2230';
+        panel.style.border = '1px solid #2a3142';
+        panel.style.borderRadius = '6px';
+
+        const topRow = document.createElement('div');
+        topRow.style.display = 'flex';
+        topRow.style.alignItems = 'center';
+
+        const info = document.createElement('div');
+        info.style.marginRight = '12px';
+        info.innerHTML = `<strong>${tower.name}</strong> - Nível ${tower.level}`;
+
+        const buttonsDiv = document.createElement('div');
+
+        const sellBtn = document.createElement('button');
+        sellBtn.textContent = `Vender ($${tower.getSellValue()})`;
+        sellBtn.addEventListener('click', () => {
+            const val = tower.getSellValue();
+            this.state.game.money += val;
+            const idx = this.state.towers.indexOf(tower);
+            if (idx > -1) this.state.towers.splice(idx, 1);
+            this.hideTowerMenu();
+        });
+
+        const upgradeBtn = document.createElement('button');
+        const upCost = tower.getUpgradeCost();
+        if (!isFinite(upCost)) {
+            upgradeBtn.textContent = 'Max';
+            upgradeBtn.disabled = true;
+        } else {
+            upgradeBtn.textContent = `Up (${upCost})`;
+            upgradeBtn.addEventListener('click', () => {
+                const cost = tower.getUpgradeCost();
+                if (this.state.game.money < cost) {
+                    this.showToastAt(window.innerWidth / 2, window.innerHeight / 2, `Dinheiro insuficiente! Precisa de ${cost}`);
+                    return;
+                }
+                this.state.game.money -= cost;
+                tower.upgrade();
+                // refresh panel
+                this.showTowerMenu(tower);
+            });
+        }
+
+        buttonsDiv.appendChild(sellBtn);
+        buttonsDiv.appendChild(upgradeBtn);
+
+        topRow.appendChild(info);
+        topRow.appendChild(buttonsDiv);
+
+        const attrDiv = document.createElement('div');
+        attrDiv.style.marginTop = '8px';
+        attrDiv.style.display = 'flex';
+        attrDiv.style.gap = '18px';
+
+        // current and next stats
+        const nextDmg = Math.round(tower.damage * 1.2);
+        const nextRange = Math.round(tower.range * 1.12);
+        const nextFireRate = +(1 / Math.max(0.05, tower.fireInterval * 0.92)).toFixed(2);
+        const curFireRate = +(1 / Math.max(0.0001, tower.fireInterval)).toFixed(2);
+
+        const dmgEl = document.createElement('div');
+        dmgEl.textContent = `Dano: ${tower.damage} > ${nextDmg}`;
+        const rangeEl = document.createElement('div');
+        rangeEl.textContent = `Alcance: ${tower.range} > ${nextRange}`;
+        const frEl = document.createElement('div');
+        frEl.textContent = `FireRate (shots/s): ${curFireRate} > ${nextFireRate}`;
+
+        attrDiv.appendChild(dmgEl);
+        attrDiv.appendChild(rangeEl);
+        attrDiv.appendChild(frEl);
+
+        panel.appendChild(topRow);
+        panel.appendChild(attrDiv);
+    }
+
+    private hideTowerMenu(): void {
+        this.state.selectedTower = null;
+        if (this.towerPanelDiv) {
+            this.towerPanelDiv.style.display = 'none';
+            this.towerPanelDiv.innerHTML = '';
+        }
+    }
+
     private handleCanvasClick(e: MouseEvent): void {
         if (this.state.game.gameOver) return;
 
@@ -71,8 +166,21 @@ class Game {
         const x = (e.clientX - rect.left) * (this.canvas.width / rect.width);
         const y = (e.clientY - rect.top) * (this.canvas.height / rect.height);
 
-        // Only place if a tower type is selected
-        if (this.selectedTowerType == null) return;
+        // If no placement type selected, check if user clicked on an existing tower -> select it
+        if (this.selectedTowerType == null) {
+            // find tower under cursor
+            for (const t of this.state.towers) {
+                const dx = t.x - x, dy = t.y - y;
+                if (Math.hypot(dx, dy) <= 14) {
+                    // select
+                    this.showTowerMenu(t);
+                    return;
+                }
+            }
+            // clicked empty space: hide menu/selection
+            this.hideTowerMenu();
+            return;
+        }
 
         // Validate placement using shared helper
         const vp = validatePlacement(x, y, this.state.towers.map(t => ({ x: t.x, y: t.y })), path);
@@ -126,6 +234,18 @@ class Game {
 
         const firstChild = hud.firstChild;
         hud.insertBefore(selectorDiv, firstChild);
+
+        // create (or ensure) tower panel right after selector
+        const panel = document.createElement('div');
+        panel.id = 'tower-panel';
+        panel.style.marginTop = '8px';
+        panel.style.minHeight = '48px';
+        panel.style.display = 'none';
+        panel.style.alignItems = 'center';
+        panel.style.gap = '8px';
+        panel.style.padding = '6px';
+        hud.insertBefore(panel, selectorDiv.nextSibling);
+        this.towerPanelDiv = panel;
     }
 
     private updateTowerButtons(): void {

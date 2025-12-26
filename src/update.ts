@@ -99,6 +99,10 @@ export class GameUpdater {
         const projectilesToRemove: Projectile[] = [];
 
         for (const projectile of this.state.projectiles) {
+            // if the projectile had a target that's been removed, clear the target so it flies straight
+            if ((projectile as any).target && this.state.enemies.indexOf((projectile as any).target) === -1) {
+                (projectile as any).target = null;
+            }
             projectile.update(dt);
 
             // Check if off screen

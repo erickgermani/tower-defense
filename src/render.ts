@@ -53,6 +53,16 @@ export class Renderer {
 
     private drawTowers(): void {
         for (const tower of this.state.towers) {
+            // highlight selected tower
+            if (this.state.selectedTower === tower) {
+                this.ctx.save();
+                this.ctx.beginPath();
+                this.ctx.arc(tower.x, tower.y, 16, 0, Math.PI * 2);
+                this.ctx.strokeStyle = 'rgba(121,209,139,0.9)';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+                this.ctx.restore();
+            }
             // Base
             this.ctx.fillStyle = tower.color;
             this.ctx.beginPath();

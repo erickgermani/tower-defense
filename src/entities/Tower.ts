@@ -12,6 +12,8 @@ export class Tower {
     public type: TowerType;
     // angle in radians the barrel is pointing to (0 = right)
     public angle: number = 0;
+    public level: number = 0;
+    public upgradesSpent: number = 0;
     public range: number;
     public cooldown: number = 0;
     public fireInterval: number;
@@ -34,6 +36,37 @@ export class Tower {
         this.fireInterval = 1 / config.fireRate;
         this.damage = config.damage;
         this.projectileSpeed = config.projectileSpeed;
+    }
+
+    /**
+     * Compute the upgrade cost for next level
+     */
+    public getUpgradeCost(): number {
+        // simple scaling: base * 0.6 * (level+1)
+        if (this.level >= 5) return Infinity;
+        return Math.max(5, Math.round(this.cost * 0.6 * (this.level + 1)));
+    }
+
+    /**
+     * Attempt to upgrade this tower: apply stat increases and record spent.
+     * Returns true if upgraded.
+     */
+    public upgrade(): number {
+        const c = this.getUpgradeCost();
+        if (!isFinite(c)) return 0;
+        // apply increases
+        this.level += 1;
+        this.upgradesSpent += c;
+        // increase damage and range, speed up fire rate
+        this.damage = Math.round(this.damage * 1.2);
+        this.range = Math.round(this.range * 1.12);
+        this.fireInterval = Math.max(0.05, this.fireInterval * 0.92);
+        return c;
+    }
+
+    /** Sell returns how much money it gives when sold (75% of base cost + upgrades) */
+    public getSellValue(): number {
+        return Math.floor((this.cost + this.upgradesSpent) * 0.75);
     }
 
     public update(dt: number): void {
@@ -68,8 +101,7 @@ export class Tower {
         return new Projectile(
             this.x,
             this.y,
-            target.x,
-            target.y,
+            target,
             this.damage,
             this.projectileSpeed,
             this.type
