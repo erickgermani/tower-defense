@@ -29,3 +29,30 @@ export function pointToSegmentDistance(px: number, py: number, x1: number, y1: n
     const projy = y1 + vy * t;
     return dist(px, py, projx, projy);
 }
+
+/**
+ * Validate tower placement at point (px,py).
+ * Returns { valid, reason } where reason is 'path' | 'tower' | null.
+ */
+export function validatePlacement(px: number, py: number, towers: { x: number; y: number }[], path: { x: number; y: number }[], opts?: { pathThreshold?: number; towerThreshold?: number; }): { valid: boolean; reason: 'path' | 'tower' | null } {
+    const pathThreshold = opts?.pathThreshold ?? 22;
+    const towerThreshold = opts?.towerThreshold ?? 24;
+
+    // check path
+    for (let i = 0; i < path.length - 1; i++) {
+        const p1 = path[i];
+        const p2 = path[i + 1];
+        if (pointToSegmentDistance(px, py, p1.x, p1.y, p2.x, p2.y) < pathThreshold) {
+            return { valid: false, reason: 'path' };
+        }
+    }
+
+    // check towers
+    for (const t of towers) {
+        if (dist(px, py, t.x, t.y) < towerThreshold) {
+            return { valid: false, reason: 'tower' };
+        }
+    }
+
+    return { valid: true, reason: null };
+}

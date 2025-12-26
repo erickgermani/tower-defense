@@ -2,7 +2,7 @@
 
 import { State } from './state.js';
 import { path, towerConfigs } from './config.js';
-import { clamp, pointToSegmentDistance, dist } from './utils.js';
+import { clamp, validatePlacement, dist } from './utils.js';
 
 export class Renderer {
     private canvas: HTMLCanvasElement;
@@ -62,9 +62,12 @@ export class Renderer {
             // Barrel
             this.ctx.strokeStyle = this.lightenColor(tower.color);
             this.ctx.lineWidth = 3;
+            // draw barrel according to tower.angle
+            const bx = tower.x + Math.cos(tower.angle) * 14;
+            const by = tower.y + Math.sin(tower.angle) * 14;
             this.ctx.beginPath();
             this.ctx.moveTo(tower.x, tower.y);
-            this.ctx.lineTo(tower.x + 14, tower.y);
+            this.ctx.lineTo(bx, by);
             this.ctx.stroke();
         }
     }
@@ -134,25 +137,8 @@ export class Renderer {
         const x = this.state.placementX;
         const y = this.state.placementY;
 
-        // Determine if the placement point is valid: not on path and not overlapping other towers
-        let valid = true;
-        for (let i = 0; i < path.length - 1; i++) {
-            const p1 = path[i];
-            const p2 = path[i + 1];
-            if (pointToSegmentDistance(x, y, p1.x, p1.y, p2.x, p2.y) < 22) {
-                valid = false;
-                break;
-            }
-        }
-        if (valid) {
-            for (const t of this.state.towers) {
-                if (dist(x, y, t.x, t.y) < 24) {
-                    valid = false;
-                    break;
-                }
-            }
-        }
-
+        const vp = validatePlacement(x, y, this.state.towers.map(t => ({ x: t.x, y: t.y })), path);
+        const valid = vp.valid;
         const baseColor = valid ? cfg.color : '#c94a4a';
 
         // translucent fill
@@ -164,6 +150,35 @@ export class Renderer {
         this.ctx.lineWidth = 2;
         this.ctx.strokeStyle = `rgba(${hexToRgb(baseColor)}, 0.28)`;
         this.ctx.stroke();
+        this.ctx.restore();
+
+        // Draw a translucent tower at the cursor (or an X if invalid)
+        this.ctx.save();
+        if (valid) {
+            this.ctx.fillStyle = `rgba(${hexToRgb(cfg.color)}, 0.9)`;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // small barrel pointing to the right by default
+            this.ctx.strokeStyle = this.lightenColor(cfg.color);
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y);
+            this.ctx.lineTo(x + 14, y);
+            this.ctx.stroke();
+        } else {
+            // draw X
+            this.ctx.strokeStyle = '#ff6b6b';
+            this.ctx.lineWidth = 3;
+            const s = 12;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - s, y - s);
+            this.ctx.lineTo(x + s, y + s);
+            this.ctx.moveTo(x + s, y - s);
+            this.ctx.lineTo(x - s, y + s);
+            this.ctx.stroke();
+        }
         this.ctx.restore();
     }
 }

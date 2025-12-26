@@ -7,7 +7,7 @@ import { towerConfigs } from './config.js';
 import { WaveManager } from './wave.js';
 import { GameUpdater } from './update.js';
 import { Renderer } from './render.js';
-import { clamp, pointToSegmentDistance, dist } from './utils.js';
+import { clamp, validatePlacement } from './utils.js';
 import { path } from './config.js';
 
 class Game {
@@ -74,29 +74,12 @@ class Game {
         // Only place if a tower type is selected
         if (this.selectedTowerType == null) return;
 
-        // Validate placement: not on path and not on other towers
-        // Check path segments
-        const pathClear = (() => {
-            for (let i = 0; i < path.length - 1; i++) {
-                const p1 = path[i];
-                const p2 = path[i + 1];
-                if (pointToSegmentDistance(x, y, p1.x, p1.y, p2.x, p2.y) < 22) {
-                    return false;
-                }
-            }
-            return true;
-        })();
-        if (!pathClear) {
-            this.showToastAt(e.clientX, e.clientY, 'Local inválido: caminho.');
+        // Validate placement using shared helper
+        const vp = validatePlacement(x, y, this.state.towers.map(t => ({ x: t.x, y: t.y })), path);
+        if (!vp.valid) {
+            if (vp.reason === 'path') this.showToastAt(e.clientX, e.clientY, 'Local inválido: caminho.');
+            else if (vp.reason === 'tower') this.showToastAt(e.clientX, e.clientY, 'Local inválido: torre existente.');
             return;
-        }
-
-        // Check other towers
-        for (const t of this.state.towers) {
-            if (dist(x, y, t.x, t.y) < 24) {
-                this.showToastAt(e.clientX, e.clientY, 'Local inválido: torre existente.');
-                return;
-            }
         }
 
         const cost = towerConfigs[this.selectedTowerType].cost;

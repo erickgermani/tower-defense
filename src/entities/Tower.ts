@@ -1,6 +1,6 @@
 // Tower class
 
-import { TowerType, TowerConfig } from '../types.js';
+import { TowerType } from '../types.js';
 import { towerConfigs } from '../config.js';
 import { Enemy } from './Enemy.js';
 import { Projectile } from './Projectile.js';
@@ -10,6 +10,8 @@ export class Tower {
     public x: number;
     public y: number;
     public type: TowerType;
+    // angle in radians the barrel is pointing to (0 = right)
+    public angle: number = 0;
     public range: number;
     public cooldown: number = 0;
     public fireInterval: number;
@@ -61,6 +63,8 @@ export class Tower {
 
     public fire(target: Enemy): Projectile {
         this.cooldown = this.fireInterval;
+        // point barrel toward target when firing
+        this.angle = Math.atan2(target.y - this.y, target.x - this.x);
         return new Projectile(
             this.x,
             this.y,
