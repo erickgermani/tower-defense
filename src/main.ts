@@ -18,8 +18,7 @@ class Game {
     private renderer: Renderer;
     // selection for tower placement. null means 'none'
     private selectedTowerType: TowerType | null = TowerType.BASIC;
-    // references to tower selector and panel
-    private towerSelectorDiv?: HTMLDivElement;
+    // reference to tower panel
     private towerPanelDiv?: HTMLDivElement;
 
     constructor() {
@@ -34,7 +33,10 @@ class Game {
         this.setupEventListeners();
         // sync initial placement selection to state
         State.getInstance().placementType = this.selectedTowerType;
-        this.createTowerSelector();
+        this.bindSelectors();
+        // ensure panel reference
+        this.towerPanelDiv = document.getElementById('tower-panel') as HTMLDivElement;
+        this.renderTowerPanel(null);
         this.start();
     }
 
@@ -68,95 +70,92 @@ class Game {
     }
 
     private showTowerMenu(tower: import('./entities/Tower.js').Tower) {
-        // use fixed panel in HUD for tower actions
         this.state.selectedTower = tower;
-        if (!this.towerPanelDiv) return;
-        const panel = this.towerPanelDiv;
-        panel.innerHTML = '';
-        panel.style.display = 'flex';
-        panel.style.flexDirection = 'column';
-        panel.style.background = '#1b2230';
-        panel.style.border = '1px solid #2a3142';
-        panel.style.borderRadius = '6px';
+        this.renderTowerPanel(tower);
+    }
+ 
+    private hideTowerMenu(): void {
+        this.state.selectedTower = null;
+        this.renderTowerPanel(null);
+    }
 
-        const topRow = document.createElement('div');
-        topRow.style.display = 'flex';
-        topRow.style.alignItems = 'center';
+    private renderTowerPanel(tower: import('./entities/Tower.js').Tower | null) {
+        const panel = document.getElementById('tower-panel');
+        if (!panel) return;
 
-        const info = document.createElement('div');
-        info.style.marginRight = '12px';
-        info.innerHTML = `<strong>${tower.name}</strong> - Nível ${tower.level}`;
+        const infoEl = document.getElementById('panel-info') as HTMLElement;
+        const sellBtn = document.getElementById('sell-btn') as HTMLButtonElement;
+        const upgradeBtn = document.getElementById('upgrade-btn') as HTMLButtonElement;
+        const dmgEl = document.getElementById('attr-dmg') as HTMLElement;
+        const rangeEl = document.getElementById('attr-range') as HTMLElement;
+        const frEl = document.getElementById('attr-fr') as HTMLElement;
 
-        const buttonsDiv = document.createElement('div');
+        const locked = !tower;
+        if (locked) panel.classList.add('locked'); else panel.classList.remove('locked');
 
-        const sellBtn = document.createElement('button');
+        if (!tower) {
+            infoEl.innerHTML = `<em>Nenhuma torre selecionada</em>`;
+            sellBtn.textContent = `Vender ($0)`;
+            sellBtn.disabled = true;
+            // upgrade
+            upgradeBtn.textContent = 'Up';
+            upgradeBtn.disabled = true;
+            dmgEl.textContent = `Dano: -`;
+            rangeEl.textContent = `Alcance: -`;
+            frEl.textContent = `FireRate: -`;
+            // remove old listeners by cloning
+            sellBtn.replaceWith(sellBtn.cloneNode(true));
+            upgradeBtn.replaceWith(upgradeBtn.cloneNode(true));
+            // re-query after replace
+            // (no handlers needed when locked)
+            return;
+        }
+
+        // Tower is present: populate values
+        infoEl.innerHTML = `<strong>${tower.name}</strong> - Nível ${tower.level}`;
         sellBtn.textContent = `Vender ($${tower.getSellValue()})`;
-        sellBtn.addEventListener('click', () => {
+        sellBtn.disabled = false;
+
+        // wire sell action (replace to remove previous handlers)
+        const newSell = sellBtn.cloneNode(true) as HTMLButtonElement;
+        newSell.addEventListener('click', () => {
             const val = tower.getSellValue();
             this.state.game.money += val;
             const idx = this.state.towers.indexOf(tower);
             if (idx > -1) this.state.towers.splice(idx, 1);
             this.hideTowerMenu();
         });
+        sellBtn.parentElement!.replaceChild(newSell, sellBtn);
 
-        const upgradeBtn = document.createElement('button');
+        // upgrade
         const upCost = tower.getUpgradeCost();
+        const newUpgrade = (upgradeBtn.cloneNode(true) as HTMLButtonElement);
         if (!isFinite(upCost)) {
-            upgradeBtn.textContent = 'Max';
-            upgradeBtn.disabled = true;
+            newUpgrade.textContent = 'Max';
+            newUpgrade.disabled = true;
         } else {
-            upgradeBtn.textContent = `Up (${upCost})`;
-            upgradeBtn.addEventListener('click', () => {
-                const cost = tower.getUpgradeCost();
-                if (this.state.game.money < cost) {
-                    this.showToastAt(window.innerWidth / 2, window.innerHeight / 2, `Dinheiro insuficiente! Precisa de ${cost}`);
+            newUpgrade.textContent = `Up (${upCost})`;
+            newUpgrade.disabled = false;
+            newUpgrade.addEventListener('click', () => {
+                if (this.state.game.money < upCost) {
+                    this.showToastAt(window.innerWidth / 2, window.innerHeight / 2, `Dinheiro insuficiente! Precisa de ${upCost}`);
                     return;
                 }
-                this.state.game.money -= cost;
+                this.state.game.money -= upCost;
                 tower.upgrade();
-                // refresh panel
-                this.showTowerMenu(tower);
+                this.renderTowerPanel(tower);
             });
         }
+        upgradeBtn.parentElement!.replaceChild(newUpgrade, upgradeBtn);
 
-        buttonsDiv.appendChild(sellBtn);
-        buttonsDiv.appendChild(upgradeBtn);
-
-        topRow.appendChild(info);
-        topRow.appendChild(buttonsDiv);
-
-        const attrDiv = document.createElement('div');
-        attrDiv.style.marginTop = '8px';
-        attrDiv.style.display = 'flex';
-        attrDiv.style.gap = '18px';
-
-        // current and next stats
         const nextDmg = Math.round(tower.damage * 1.2);
         const nextRange = Math.round(tower.range * 1.12);
         const nextFireRate = +(1 / Math.max(0.05, tower.fireInterval * 0.92)).toFixed(2);
         const curFireRate = +(1 / Math.max(0.0001, tower.fireInterval)).toFixed(2);
 
-        const dmgEl = document.createElement('div');
         dmgEl.textContent = `Dano: ${tower.damage} > ${nextDmg}`;
-        const rangeEl = document.createElement('div');
         rangeEl.textContent = `Alcance: ${tower.range} > ${nextRange}`;
-        const frEl = document.createElement('div');
         frEl.textContent = `FireRate (shots/s): ${curFireRate} > ${nextFireRate}`;
-
-        attrDiv.appendChild(dmgEl);
-        attrDiv.appendChild(rangeEl);
-        attrDiv.appendChild(frEl);
-
-        panel.appendChild(topRow);
-        panel.appendChild(attrDiv);
-    }
-
-    private hideTowerMenu(): void {
-        this.state.selectedTower = null;
-        if (this.towerPanelDiv) {
-            this.towerPanelDiv.style.display = 'none';
-            this.towerPanelDiv.innerHTML = '';
-        }
     }
 
     private handleCanvasClick(e: MouseEvent): void {
@@ -201,25 +200,16 @@ class Game {
         this.state.addTower(tower);
     }
 
-    private createTowerSelector(): void {
-        const hud = document.querySelector('.hud') as HTMLElement;
-        const selectorDiv = document.createElement('div');
-        selectorDiv.style.cssText = 'display: flex; gap: 8px;';
+    private bindSelectors(): void {
+        // Bind tower selector buttons from static HTML
+        const basic = document.getElementById('tower-basic') as HTMLButtonElement | null;
+        const sniper = document.getElementById('tower-sniper') as HTMLButtonElement | null;
+        const cannon = document.getElementById('tower-cannon') as HTMLButtonElement | null;
 
-        // Clicking the same tower button again will deselect (toggle)
-        Object.values(TowerType).forEach(type => {
-            const config = towerConfigs[type];
-            const btn = document.createElement('button');
-            btn.textContent = `${config.name} ($${config.cost})`;
-            btn.id = `tower-${type}`;
-            btn.className = 'tower-btn';
-            btn.style.cssText = this.selectedTowerType === type 
-                ? 'border: 2px solid #79d18b;' 
-                : '';
-            
+        const bindBtn = (btn: HTMLButtonElement | null, type: TowerType) => {
+            if (!btn) return;
             btn.addEventListener('click', () => {
                 if (this.selectedTowerType === type) {
-                    // toggle off
                     this.selectedTowerType = null;
                     State.getInstance().placementType = null;
                 } else {
@@ -228,24 +218,13 @@ class Game {
                 }
                 this.updateTowerButtons();
             });
+        };
 
-            selectorDiv.appendChild(btn);
-        });
+        bindBtn(basic, TowerType.BASIC);
+        bindBtn(sniper, TowerType.SNIPER);
+        bindBtn(cannon, TowerType.CANNON);
 
-        const firstChild = hud.firstChild;
-        hud.insertBefore(selectorDiv, firstChild);
-
-        // create (or ensure) tower panel right after selector
-        const panel = document.createElement('div');
-        panel.id = 'tower-panel';
-        panel.style.marginTop = '8px';
-        panel.style.minHeight = '48px';
-        panel.style.display = 'none';
-        panel.style.alignItems = 'center';
-        panel.style.gap = '8px';
-        panel.style.padding = '6px';
-        hud.insertBefore(panel, selectorDiv.nextSibling);
-        this.towerPanelDiv = panel;
+        // Next wave button already exists in HTML; stats element already fetched in constructor
     }
 
     private updateTowerButtons(): void {

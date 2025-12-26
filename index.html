@@ -11,9 +11,35 @@
 <body>
     <div id="wrap">
         <div class="hud">
-            <div id="stats"></div>
-            <div>
-                <button id="nextWave">Próxima wave</button>
+            <div id="selector-row">
+                <div id="tower-selector">
+                    <!-- static buttons; JS will only bind events and update visuals -->
+                    <button id="tower-basic" class="tower-btn" data-type="basic">Mago ($25)</button>
+                    <button id="tower-sniper" class="tower-btn" data-type="sniper">Patrulheiro ($40)</button>
+                    <button id="tower-cannon" class="tower-btn" data-type="cannon">Bruxo ($35)</button>
+                </div>
+
+                <div id="stats"></div>
+
+                <div>
+                    <button id="nextWave">Próxima wave</button>
+                </div>
+            </div>
+
+            <!-- fixed panel below selector; JS will populate values -->
+            <div id="tower-panel" class="locked">
+                <div id="panel-top">
+                    <div id="panel-info"><em>Nenhuma torre selecionada</em></div>
+                    <div id="panel-sell"><button id="sell-btn" disabled>Vender ($0)</button></div>
+                </div>
+                <div id="panel-bottom">
+                    <div id="panel-upgrade"><button id="upgrade-btn" disabled>Up</button></div>
+                    <div id="panel-attrs">
+                        <div id="attr-dmg">Dano: -</div>
+                        <div id="attr-range">Alcance: -</div>
+                        <div id="attr-fr">FireRate: -</div>
+                    </div>
+                </div>
             </div>
         </div>
         <canvas id="c" width="900" height="540"></canvas>
