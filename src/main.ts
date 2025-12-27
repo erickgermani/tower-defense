@@ -215,6 +215,7 @@ class Game {
         const basic = document.getElementById('tower-basic') as HTMLButtonElement | null;
         const sniper = document.getElementById('tower-sniper') as HTMLButtonElement | null;
         const cannon = document.getElementById('tower-cannon') as HTMLButtonElement | null;
+        const slow = document.getElementById('tower-slow') as HTMLButtonElement | null;
 
         const bindBtn = (btn: HTMLButtonElement | null, type: TowerType) => {
             if (!btn) return;
@@ -233,6 +234,7 @@ class Game {
         bindBtn(basic, TowerType.BASIC);
         bindBtn(sniper, TowerType.SNIPER);
         bindBtn(cannon, TowerType.CANNON);
+        bindBtn(slow, TowerType.SLOW);
 
         // Next wave button already exists in HTML; stats element already fetched in constructor
     }

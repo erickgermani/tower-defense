@@ -43,6 +43,9 @@ export class Projectile {
             case TowerType.CANNON:
                 this.color = '#f5a57a';
                 break;
+            case TowerType.SLOW:
+                this.color = '#7ad1f5';
+                break;
             default:
                 this.color = '#ffffff';
         }

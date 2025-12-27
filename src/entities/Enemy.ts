@@ -10,7 +10,10 @@ export class Enemy {
     public wp: number = 1;
     public hp: number;
     public maxHp: number;
-    public speed: number;
+    // base speed without slow modifiers
+    public baseSpeed: number;
+    // slow stacks applied by slow tower (each -10% up to 5)
+    public slowStacks: number = 0;
     public reward: number;
     public radius: number;
     public color: string;
@@ -34,12 +37,23 @@ export class Enemy {
         // Calculate stats based on wave
         this.maxHp = config.baseHp + wave * config.hpGrowth;
         this.hp = this.maxHp;
-        this.speed = config.baseSpeed + wave * config.speedGrowth;
-        this.reward = Math.floor(config.baseReward + wave * config.rewardGrowth);
+        this.baseSpeed = config.baseSpeed + wave * config.speedGrowth;
+        // Slower reward progression: base + floor(wave/2) * rewardGrowth, minimum 1
+        this.reward = Math.max(1, Math.floor(config.baseReward + Math.floor(wave / 2) * config.rewardGrowth));
     }
 
     public takeDamage(damage: number): void {
         this.hp -= damage;
+    }
+
+    // apply one slow stack (each -10%) up to 5 stacks
+    public applySlow(): void {
+        this.slowStacks = Math.min(5, this.slowStacks + 1);
+    }
+
+    // effective speed considering slow stacks
+    public getSpeed(): number {
+        return this.baseSpeed * Math.max(0.05, 1 - 0.1 * this.slowStacks);
     }
 
     public isDead(): boolean {

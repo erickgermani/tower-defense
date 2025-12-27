@@ -24,7 +24,7 @@ export class State {
     private constructor() {
         this.game = {
             money: 100,
-            lives: 20,
+            lives: 12,
             wave: 0,
             inWave: false,
             wavePlan: null,
@@ -73,8 +73,8 @@ export class State {
 
     public reset(): void {
         this.game = {
-            money: 100,
-            lives: 20,
+            money: 60,
+            lives: 12,
             wave: 0,
             inWave: false,
             wavePlan: null,

@@ -5,6 +5,7 @@ import { towerConfigs } from '../config.js';
 import { Enemy } from './Enemy.js';
 import { Projectile } from './Projectile.js';
 import { dist } from '../utils.js';
+import { path } from '../config.js';
 
 export class Tower {
     public x: number;
@@ -80,14 +81,24 @@ export class Tower {
     }
 
     public findTarget(enemies: Enemy[]): Enemy | null {
+        // Choose, among enemies inside range, the one closest to the base (smallest remaining distance along the path)
         let best: Enemy | null = null;
-        let bestD = Infinity;
+        let bestRem = Infinity;
 
         for (const enemy of enemies) {
-            const d = dist(this.x, this.y, enemy.x, enemy.y);
-            if (d <= this.range && d < bestD) {
+            const dToTower = dist(this.x, this.y, enemy.x, enemy.y);
+            if (dToTower > this.range) continue;
+
+            // compute remaining distance from enemy to end of path
+            const wpIndex = Math.max(0, Math.min(enemy.wp, path.length - 1));
+            let rem = dist(enemy.x, enemy.y, path[wpIndex].x, path[wpIndex].y);
+            for (let i = wpIndex; i < path.length - 1; i++) {
+                rem += dist(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y);
+            }
+
+            if (rem < bestRem) {
+                bestRem = rem;
                 best = enemy;
-                bestD = d;
             }
         }
 

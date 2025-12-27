@@ -13,7 +13,8 @@ export interface Vector {
 export enum TowerType {
     BASIC = 'basic',
     SNIPER = 'sniper',
-    CANNON = 'cannon'
+    CANNON = 'cannon',
+    SLOW = 'slow'
 }
 
 export enum EnemyType {
@@ -31,6 +32,8 @@ export interface TowerConfig {
     projectileSpeed: number;
     color: string;
     name: string;
+    // optional field-of-view (radians). if absent, tower has full 360° coverage
+    fov?: number;
 }
 
 export interface EnemyConfig {

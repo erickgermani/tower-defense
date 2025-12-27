@@ -7,6 +7,7 @@ import { Projectile } from './entities/Projectile.js';
 import { dist, norm } from './utils.js';
 import { EnemyType } from './types.js';
 import { WaveManager } from './wave.js';
+import { TowerType } from './types.js';
 
 export class GameUpdater {
     private state: State;
@@ -43,10 +44,10 @@ export class GameUpdater {
     private spawnEnemy(): void {
         if (!this.state.game.wavePlan) return;
 
-        // Select random enemy type from available types
+        // Select enemy type: only one type per wave, so pick the first type
         const types = this.state.game.wavePlan.enemyTypes;
-        const type = types[Math.floor(Math.random() * types.length)];
-        
+        const type = types[0];
+
         const enemy = new Enemy(path[0], type, this.state.game.wave);
         this.state.addEnemy(enemy);
     }
@@ -58,8 +59,8 @@ export class GameUpdater {
             const wp = path[enemy.wp];
             const direction = norm(wp.x - enemy.x, wp.y - enemy.y);
 
-            enemy.x += direction.x * enemy.speed * dt;
-            enemy.y += direction.y * enemy.speed * dt;
+            enemy.x += direction.x * enemy.getSpeed() * dt;
+            enemy.y += direction.y * enemy.getSpeed() * dt;
 
             if (dist(enemy.x, enemy.y, wp.x, wp.y) < 8) {
                 enemy.wp++;
@@ -115,6 +116,12 @@ export class GameUpdater {
             const hitEnemy = this.checkProjectileCollision(projectile);
             if (hitEnemy) {
                 hitEnemy.takeDamage(projectile.damage);
+
+                // If projectile came from a slow tower, apply slow stack
+                if (projectile.sourceType === TowerType.SLOW) {
+                    hitEnemy.applySlow();
+                }
+
                 projectilesToRemove.push(projectile);
 
                 if (hitEnemy.isDead()) {

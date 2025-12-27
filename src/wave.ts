@@ -1,7 +1,7 @@
 // Wave management
 
 import { State } from './state.js';
-import { EnemyType, WavePlan } from './types.js';
+import { EnemyType } from './types.js';
 import { clamp } from './utils.js';
 
 export class WaveManager {
@@ -22,10 +22,12 @@ export class WaveManager {
         // Create wave plan with different enemy types
         const enemyTypes = this.getEnemyTypesForWave(this.state.game.wave);
         
-        this.state.game.waveRemaining = 8 + this.state.game.wave * 2;
+        // Slower progression: fewer additional enemies per wave
+        this.state.game.waveRemaining = 8 + this.state.game.wave; // slower increase
         this.state.game.waveSpawnTimer = 0;
         this.state.game.wavePlan = {
-            interval: clamp(0.75 - this.state.game.wave * 0.03, 0.35, 0.75),
+            // spawn interval decays more slowly and has a higher lower bound
+            interval: clamp(0.75 - this.state.game.wave * 0.02, 0.45, 0.75),
             enemyTypes
         };
 
@@ -36,19 +38,11 @@ export class WaveManager {
     }
 
     private getEnemyTypesForWave(wave: number): EnemyType[] {
-        const types: EnemyType[] = [EnemyType.BASIC];
-        
-        // Introduce fast enemies from wave 2
-        if (wave >= 2) {
-            types.push(EnemyType.FAST);
-        }
-        
-        // Introduce tank enemies from wave 4
-        if (wave >= 4) {
-            types.push(EnemyType.TANK);
-        }
-        
-        return types;
+        // Return a single enemy type per wave. Mapping:
+        // waves 1-2 => BASIC, waves 3-4 => FAST, waves 5+ => TANK
+        if (wave <= 2) return [EnemyType.BASIC];
+        if (wave <= 4) return [EnemyType.FAST];
+        return [EnemyType.TANK];
     }
 
     public endWave(): void {
@@ -60,7 +54,7 @@ export class WaveManager {
             nextWaveBtn.disabled = false;
         }
         
-        // Bonus for completing wave
-        this.state.game.money += 10;
+        // Bonus for completing wave (reduced to slow progression)
+        this.state.game.money += 4;
     }
 }
