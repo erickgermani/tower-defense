@@ -4,7 +4,7 @@ import { State } from './state.js';
 import { Tower } from './entities/Tower.js';
 import { TowerType } from './types.js';
 import { towerConfigs, enemyConfigs } from './config.js';
-import { WaveManager } from './wave.js';
+import { WaveManager, getEnemyTypesForWave } from './wave.js';
 import { GameUpdater } from './update.js';
 import { Renderer } from './render.js';
 import { clamp, validatePlacement } from './utils.js';
@@ -409,20 +409,11 @@ class Game {
         // Decide which wave to show: if in-wave show current, otherwise show next wave
         const waveToShow = this.state.game.inWave ? this.state.game.wave : (this.state.game.wave + 1);
         const plan = this.state.game.wavePlan;
-        const enemyTypes = plan?.enemyTypes ?? [];
-
-        // If no plan, try to infer two enemy types based on waveToShow using WaveManager logic approximation
-        let typesToShow: string[];
-        if (enemyTypes.length >= 2) {
-            typesToShow = enemyTypes as string[];
-        } else {
-            // fallback approximation mirroring wave.getEnemyTypesForWave rules
-            if (waveToShow <= 2) typesToShow = ['basic','basic'];
-            else if (waveToShow <= 4) typesToShow = ['basic','fast'];
-            else if (waveToShow <= 6) typesToShow = ['fast','fast'];
-            else if (waveToShow <= 8) typesToShow = ['fast','tank'];
-            else typesToShow = ['tank','tank'];
-        }
+        // Prefer the active wavePlan types (set by WaveManager). If absent, use the canonical helper
+        // so both WaveManager and Renderer use the exact same logic.
+        const typesToShow = (plan && plan.enemyTypes && plan.enemyTypes.length > 0)
+            ? plan.enemyTypes as string[]
+            : getEnemyTypesForWave(waveToShow).map(t => t as string);
 
         const computeAttributes = (typeKey: string) => {
             const cfg = (enemyConfigs as any)[typeKey];

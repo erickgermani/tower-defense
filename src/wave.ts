@@ -4,6 +4,28 @@ import { State } from './state.js';
 import { EnemyType } from './types.js';
 import { clamp } from './utils.js';
 
+export function getEnemyTypesForWave(wave: number): EnemyType[] {
+    if (wave == 1) return [EnemyType.BASIC, EnemyType.BASIC];
+    if (wave == 2) return [EnemyType.BASIC, EnemyType.FAST];
+    if (wave == 3) return [EnemyType.BASIC, EnemyType.TANK];
+    if (wave == 4) return [EnemyType.FLYER, EnemyType.FLYER];
+    if (wave == 5) return [EnemyType.FAST, EnemyType.TANK];
+    if (wave == 6) return [EnemyType.FLYER, EnemyType.TANK];
+    if (wave == 7) return [EnemyType.TANK, EnemyType.TANK];
+    if (wave == 8) return [EnemyType.BASIC, EnemyType.BASIC];
+    if (wave == 9) return [EnemyType.FAST, EnemyType.FLYER];
+
+    if (wave % 3 == 0) {
+        return [EnemyType.FAST, EnemyType.TANK];
+    }
+
+    if (wave % 2 == 0) {
+        return [EnemyType.FAST, EnemyType.BASIC];
+    }
+
+    return [EnemyType.BASIC, EnemyType.BASIC];
+}
+
 export class WaveManager {
     private state: State;
 
@@ -20,8 +42,8 @@ export class WaveManager {
         this.state.game.inWave = true;
 
         // Create wave plan with different enemy types
-        const enemyTypes = this.getEnemyTypesForWave(this.state.game.wave);
-        
+        const enemyTypes = getEnemyTypesForWave(this.state.game.wave);
+
         // Slower progression: fewer additional enemies per wave
         this.state.game.waveRemaining = 8 + this.state.game.wave; // slower increase
 
@@ -40,28 +62,6 @@ export class WaveManager {
         if (nextWaveBtn) {
             nextWaveBtn.disabled = true;
         }
-    }
-
-    private getEnemyTypesForWave(wave: number): EnemyType[] {
-        if (wave <= 1) return [EnemyType.BASIC, EnemyType.BASIC];
-        if (wave <= 2) return [EnemyType.BASIC, EnemyType.FAST];
-        if (wave <= 3) return [EnemyType.BASIC, EnemyType.TANK];
-        if (wave <= 4) return [EnemyType.FLYER, EnemyType.FLYER];
-        if (wave <= 5) return [EnemyType.FAST, EnemyType.TANK];
-        if (wave <= 6) return [EnemyType.FLYER, EnemyType.TANK];
-        if (wave <= 7) return [EnemyType.TANK, EnemyType.TANK];
-        if (wave <= 8) return [EnemyType.BASIC, EnemyType.BASIC];
-        if (wave <= 9) return [EnemyType.FAST, EnemyType.FLYER];
-
-        if (wave % 3 == 0) {
-            return [EnemyType.FAST, EnemyType.TANK];
-        }
-
-        if (wave % 2 == 0) {
-            return [EnemyType.FAST, EnemyType.BASIC];
-        }
-
-        return [EnemyType.BASIC, EnemyType.BASIC];
     }
 
     public endWave(): void {
