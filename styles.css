@@ -175,6 +175,10 @@ button:disabled {
     margin: 0 0 6px 0;
 }
 
+span, p, div, h1, h2, h3, h4, h5 {
+    color: #fff;
+}
+
 .enemy-card .enemy-meta {
     display: flex;
     align-items: center;

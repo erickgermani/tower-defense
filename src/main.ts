@@ -4,7 +4,7 @@ import { State } from './state.js';
 import { Tower } from './entities/Tower.js';
 import { TowerType } from './types.js';
 import { towerConfigs, enemyConfigs } from './config.js';
-import { WaveManager, getEnemyTypesForWave } from './wave.js';
+import { WaveManager, getWavePlanForWave } from './wave.js';
 import { GameUpdater } from './update.js';
 import { Renderer } from './render.js';
 import { clamp, validatePlacement } from './utils.js';
@@ -292,12 +292,7 @@ class Game {
              // If game over happened, show reset button and disable nextWave
              if (this.state.game.gameOver && !this.gameOverDisplayed) {
                  this.gameOverDisplayed = true;
-                 // disable next wave
                  try { nextWaveBtn.disabled = true; } catch {}
-                 // show reset control
-                 if (this.resetBtn) {
-                     this.resetBtn.style.display = '';
-                 }
              }
 
              requestAnimationFrame(loop);
@@ -330,7 +325,6 @@ class Game {
         // Reset UI flags
         this.gameOverDisplayed = false;
         // Hide reset button
-        if (this.resetBtn) this.resetBtn.style.display = 'none';
         // Re-enable next wave
         const nextWaveBtn = document.getElementById("nextWave") as HTMLButtonElement;
         if (nextWaveBtn) nextWaveBtn.disabled = false;
@@ -391,70 +385,53 @@ class Game {
     }
 
     private updateEnemyCards(): void {
-        const e1Name = document.getElementById('enemy1-name');
-        const e1Hp = document.getElementById('enemy1-hp');
-        const e1Sp = document.getElementById('enemy1-speed');
-        const e1Rew = document.getElementById('enemy1-reward');
-        const e1Dot = document.getElementById('enemy1-dot') as HTMLElement | null;
+        const panel = document.getElementById('enemy-panel');
+        if (!panel) return;
 
-        const e2Name = document.getElementById('enemy2-name');
-        const e2Hp = document.getElementById('enemy2-hp');
-        const e2Sp = document.getElementById('enemy2-speed');
-        const e2Rew = document.getElementById('enemy2-reward');
-        const e2Dot = document.getElementById('enemy2-dot') as HTMLElement | null;
+        // Decide which wave to show: if in-wave show current, otherwise show current wave (already started) or next
+        const waveToShow = this.state.game.inWave ? this.state.game.wave : (this.state.game.wave);
+        const nextWave = this.state.game.wave + 1;
 
-        const card1 = document.getElementById('enemy-card-1') as HTMLElement | null;
-        const card2 = document.getElementById('enemy-card-2') as HTMLElement | null;
+        // Use existing plan if present, otherwise compute using helper
+        const plan = this.state.game.wavePlan ?? getWavePlanForWave(waveToShow);
+        const nextPlan = getWavePlanForWave(nextWave);
 
-        // Decide which wave to show: if in-wave show current, otherwise show next wave
-        const waveToShow = this.state.game.inWave ? this.state.game.wave : (this.state.game.wave + 1);
-        const plan = this.state.game.wavePlan;
-        // Prefer the active wavePlan types (set by WaveManager). If absent, use the canonical helper
-        // so both WaveManager and Renderer use the exact same logic.
-        const typesToShow = (plan && plan.enemyTypes && plan.enemyTypes.length > 0)
-            ? plan.enemyTypes as string[]
-            : getEnemyTypesForWave(waveToShow).map(t => t as string);
-
-        const computeAttributes = (typeKey: string) => {
-            const cfg = (enemyConfigs as any)[typeKey];
+        const buildCard = (spec: any, w: number) => {
+            const cfg = (enemyConfigs as any)[spec.type as string];
             if (!cfg) return null;
-            const hp = cfg.baseHp + waveToShow * cfg.hpGrowth;
-            const speed = cfg.baseSpeed + waveToShow * cfg.speedGrowth;
-            const reward = Math.max(1, Math.floor(cfg.baseReward + Math.floor(waveToShow / 2) * cfg.rewardGrowth));
-            return { name: cfg.name, hp, speed, reward };
+            const hp = cfg.baseHp + w * cfg.hpGrowth;
+            const speed = cfg.baseSpeed + w * cfg.speedGrowth;
+            const reward = Math.max(1, Math.floor(cfg.baseReward + Math.floor(w / 2) * cfg.rewardGrowth));
+            const div = document.createElement('div');
+            div.className = 'enemy-card';
+            div.innerHTML = `<div class="enemy-meta"><span class="enemy-dot" style="background:${cfg.color}"></span><h4>${cfg.name} x${spec.count}</h4></div>` +
+                `<div>HP: ${hp}</div><div>Velocidade: ${speed}</div><div>Recompensa: ${reward}</div>`;
+            return div;
         };
 
-        const a1 = computeAttributes(typesToShow[0]);
-        const a2 = computeAttributes(typesToShow[1]);
-
-        // Show first card if available
-        if (a1) {
-            if (card1) card1.classList.remove('hidden');
-            if (e1Name) e1Name.textContent = a1.name;
-            if (e1Hp) e1Hp.textContent = `HP: ${a1.hp}`;
-            if (e1Sp) e1Sp.textContent = `Velocidade: ${a1.speed}`;
-            if (e1Rew) e1Rew.textContent = `Recompensa: ${a1.reward}`;
-            if (e1Dot) e1Dot.style.background = (enemyConfigs as any)[typesToShow[0]]?.color ?? '#999';
-        } else {
-            if (card1) card1.classList.add('hidden');
+        // Clear panel and render two sections: Current Wave and Next Wave
+        panel.innerHTML = '';
+        const curTitle = document.createElement('h3'); curTitle.textContent = `Wave ${waveToShow}`;
+        panel.appendChild(curTitle);
+        const curContainer = document.createElement('div'); curContainer.className = 'enemy-list';
+        for (const spec of plan.enemies) {
+            const card = buildCard(spec, waveToShow);
+            if (card) curContainer.appendChild(card);
         }
+        panel.appendChild(curContainer);
 
-        // If the two types are identical, hide the second card (don't duplicate info)
-        const sameType = typesToShow[1] == null || typesToShow[0] === typesToShow[1];
-        if (sameType) {
-            if (card2) card2.classList.add('hidden');
-        } else {
-            if (card2) card2.classList.remove('hidden');
-            if (a2) {
-                if (e2Name) e2Name.textContent = a2.name;
-                if (e2Hp) e2Hp.textContent = `HP: ${a2.hp}`;
-                if (e2Sp) e2Sp.textContent = `Velocidade: ${a2.speed}`;
-                if (e2Rew) e2Rew.textContent = `Recompensa: ${a2.reward}`;
-                if (e2Dot) e2Dot.style.background = (enemyConfigs as any)[typesToShow[1]]?.color ?? '#999';
-            }
+        const nextTitle = document.createElement('h3'); nextTitle.textContent = `Próxima: ${nextWave}`;
+        panel.appendChild(nextTitle);
+        const nextContainer = document.createElement('div'); nextContainer.className = 'enemy-list';
+        for (const spec of nextPlan.enemies) {
+            const card = buildCard(spec, nextWave);
+            if (card) nextContainer.appendChild(card);
         }
+        panel.appendChild(nextContainer);
     }
 }
 
 // Initialize game when DOM is ready
+
 new Game();
+

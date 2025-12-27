@@ -59,9 +59,19 @@ export interface GameState {
     waveSpawnTimer: number;
     waveRemaining: number;
     gameOver: boolean;
+    // runtime spawn queues built by WaveManager
+    spawnQueue?: EnemyType[];
+    bossQueue?: EnemyType[];
+}
+
+export interface WaveEnemySpec {
+    type: EnemyType;
+    count: number;
+    boss?: boolean;
 }
 
 export interface WavePlan {
     interval: number;
-    enemyTypes: EnemyType[];
+    enemies: WaveEnemySpec[];
+    mode: 'interleave' | 'sequential';
 }

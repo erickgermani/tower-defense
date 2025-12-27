@@ -58,10 +58,23 @@ export class GameUpdater {
     private spawnEnemy(): boolean {
         if (!this.state.game.wavePlan) return false;
 
-        // Select enemy type by cycling through the configured enemyTypes for this wave
-        const types = this.state.game.wavePlan.enemyTypes;
-        const type = types.length > 0 ? types[this.spawnCounter % types.length] : types[0];
-        this.spawnCounter++;
+        // Prefer spawnQueue (non-boss) first
+        const spawnQ = this.state.game.spawnQueue ?? [];
+        const bossQ = this.state.game.bossQueue ?? [];
+        let type: any = null;
+
+        if (spawnQ.length > 0) {
+            type = spawnQ.shift();
+        } else if (bossQ.length > 0) {
+            // Only spawn boss if there are no other enemies alive
+            if (this.state.getEnemyCount() === 0) {
+                type = bossQ.shift();
+            } else {
+                return false; // wait until other enemies are dead
+            }
+        } else {
+            return false;
+        }
 
         // Before spawning, ensure there is enough space from the last spawned enemy to avoid overlapping
         // Compute minimum spacing based on radii
@@ -93,7 +106,16 @@ export class GameUpdater {
 
         const minSpacing = cfgRadius + newRadius + 24; // extra buffer
         if (nearest && bestDist < minSpacing) {
-            // Too close to spawn; skip spawning this tick
+            // Too close to spawn; push the type back to front of its queue for retry
+            if ((this.state.game.spawnQueue ?? []).length >= 0) {
+                // If it was a boss (spawnQ was empty), put it back to bossQ front
+                if (bossQ && bossQ.length >= 0 && type && bossQ.indexOf(type) === -1 && this.state.game.spawnQueue?.indexOf(type) === -1) {
+                    // It's tricky to detect origin so prefer pushing back to spawnQueue if not boss condition
+                    this.state.game.spawnQueue!.unshift(type);
+                } else {
+                    this.state.game.spawnQueue!.unshift(type);
+                }
+            }
             return false;
         }
 

@@ -25,12 +25,14 @@ export class State {
         this.game = {
             money: 100,
             lives: 12,
-            wave: 0,
+            wave: 1,
             inWave: false,
             wavePlan: null,
             waveSpawnTimer: 0,
             waveRemaining: 0,
             gameOver: false,
+            spawnQueue: [],
+            bossQueue: []
         };
     }
 
@@ -75,12 +77,14 @@ export class State {
         this.game = {
             money: 60,
             lives: 12,
-            wave: 0,
+            wave: 1,
             inWave: false,
             wavePlan: null,
             waveSpawnTimer: 0,
             waveRemaining: 0,
             gameOver: false,
+            spawnQueue: [],
+            bossQueue: []
         };
         this.enemies = [];
         this.towers = [];
