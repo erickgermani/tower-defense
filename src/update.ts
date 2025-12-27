@@ -5,13 +5,16 @@ import { path } from './config.js';
 import { Enemy } from './entities/Enemy.js';
 import { Projectile } from './entities/Projectile.js';
 import { dist, norm } from './utils.js';
-import { EnemyType } from './types.js';
 import { WaveManager } from './wave.js';
 import { TowerType } from './types.js';
 
 export class GameUpdater {
     private state: State;
     private waveManager: WaveManager;
+    // counter to cycle through wavePlan.enemyTypes when spawning
+    private spawnCounter: number = 0;
+    // remember last wave number so we can reset spawnCounter at wave start
+    private lastWave: number = 0;
 
     constructor(waveManager: WaveManager) {
         this.state = State.getInstance();
@@ -20,6 +23,12 @@ export class GameUpdater {
 
     public update(dt: number): void {
         if (this.state.game.gameOver) return;
+
+        // reset spawn counter when a new wave starts
+        if (this.state.game.inWave && this.state.game.wave !== this.lastWave) {
+            this.spawnCounter = 0;
+            this.lastWave = this.state.game.wave;
+        }
 
         this.updateWaveSpawning(dt);
         this.updateEnemies(dt);
@@ -35,21 +44,62 @@ export class GameUpdater {
 
         this.state.game.waveSpawnTimer -= dt;
         if (this.state.game.waveSpawnTimer <= 0) {
-            this.spawnEnemy();
-            this.state.game.waveRemaining--;
-            this.state.game.waveSpawnTimer += this.state.game.wavePlan!.interval;
+            const spawned = this.spawnEnemy();
+            if (spawned) {
+                this.state.game.waveRemaining--;
+                this.state.game.waveSpawnTimer += this.state.game.wavePlan!.interval;
+            } else {
+                // small extra delay before retrying spawn to avoid tight loops
+                this.state.game.waveSpawnTimer += 0.25;
+            }
         }
     }
 
-    private spawnEnemy(): void {
-        if (!this.state.game.wavePlan) return;
+    private spawnEnemy(): boolean {
+        if (!this.state.game.wavePlan) return false;
 
-        // Select enemy type: only one type per wave, so pick the first type
+        // Select enemy type by cycling through the configured enemyTypes for this wave
         const types = this.state.game.wavePlan.enemyTypes;
-        const type = types[0];
+        const type = types.length > 0 ? types[this.spawnCounter % types.length] : types[0];
+        this.spawnCounter++;
+
+        // Before spawning, ensure there is enough space from the last spawned enemy to avoid overlapping
+        // Compute minimum spacing based on radii
+        const spawnPoint = path[0];
+        // find nearest existing enemy to spawn point
+        let nearest: Enemy | null = null;
+        let bestDist = Infinity;
+        for (const e of this.state.enemies) {
+            const d = Math.hypot(e.x - spawnPoint.x, e.y - spawnPoint.y);
+            if (d < bestDist) { bestDist = d; nearest = e; }
+        }
+
+        const cfgRadius = (() => {
+            // if nearest exists use its radius otherwise assume small default
+            if (nearest) return nearest.radius;
+            return 12;
+        })();
+
+        // estimate radius of the new enemy from its config via Enemy constructor behavior (enemyConfigs used there)
+        // but we don't import enemyConfigs here; we can roughly estimate based on type: common radii used in config.ts
+        const newRadius = (() => {
+            switch (type) {
+                case 'basic': return 12;
+                case 'fast': return 10;
+                case 'tank': return 15;
+                default: return 12;
+            }
+        })();
+
+        const minSpacing = cfgRadius + newRadius + 24; // extra buffer
+        if (nearest && bestDist < minSpacing) {
+            // Too close to spawn; skip spawning this tick
+            return false;
+        }
 
         const enemy = new Enemy(path[0], type, this.state.game.wave);
         this.state.addEnemy(enemy);
+        return true;
     }
 
     private updateEnemies(dt: number): void {
@@ -83,11 +133,15 @@ export class GameUpdater {
 
     private updateTowers(dt: number): void {
         for (const tower of this.state.towers) {
+            // select target based on remaining distance to base
+            const target = tower.findTarget(this.state.enemies);
+            tower.target = target;
+
+            // update tower (rotation, cooldown)
             tower.update(dt);
 
             if (!tower.canFire()) continue;
 
-            const target = tower.findTarget(this.state.enemies);
             if (target) {
                 const projectile = tower.fire(target);
                 this.state.addProjectile(projectile);
@@ -115,19 +169,36 @@ export class GameUpdater {
             // Check collision with enemies
             const hitEnemy = this.checkProjectileCollision(projectile);
             if (hitEnemy) {
-                hitEnemy.takeDamage(projectile.damage);
+                // Area-of-effect behavior for cannon ("bruxo") towers
+                if (projectile.sourceType === TowerType.CANNON) {
+                    const aoeRadius = 36; // pixels
+                    // iterate over a copy because we may remove enemies while iterating
+                    for (const enemy of this.state.enemies.slice()) {
+                        if (dist(projectile.x, projectile.y, enemy.x, enemy.y) <= aoeRadius + enemy.radius) {
+                            enemy.takeDamage(projectile.damage);
+                            // Cannon currently doesn't apply slow; slow handled below for SLOW type
+                            if (enemy.isDead()) {
+                                this.state.game.money += enemy.reward;
+                                this.state.removeEnemy(enemy);
+                            }
+                        }
+                    }
+                } else {
+                    // single-target behavior
+                    hitEnemy.takeDamage(projectile.damage);
 
-                // If projectile came from a slow tower, apply slow stack
-                if (projectile.sourceType === TowerType.SLOW) {
-                    hitEnemy.applySlow();
+                    // If projectile came from a slow tower, apply slow stack
+                    if (projectile.sourceType === TowerType.SLOW) {
+                        hitEnemy.applySlow();
+                    }
+
+                    if (hitEnemy.isDead()) {
+                        this.state.game.money += hitEnemy.reward;
+                        this.state.removeEnemy(hitEnemy);
+                    }
                 }
 
                 projectilesToRemove.push(projectile);
-
-                if (hitEnemy.isDead()) {
-                    this.state.game.money += hitEnemy.reward;
-                    this.state.removeEnemy(hitEnemy);
-                }
             }
         }
 

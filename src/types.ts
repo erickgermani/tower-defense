@@ -20,7 +20,9 @@ export enum TowerType {
 export enum EnemyType {
     BASIC = 'basic',
     FAST = 'fast',
-    TANK = 'tank'
+    TANK = 'tank',
+    FLYER = 'flyer',
+
 }
 
 export interface TowerConfig {
@@ -32,8 +34,7 @@ export interface TowerConfig {
     projectileSpeed: number;
     color: string;
     name: string;
-    // optional field-of-view (radians). if absent, tower has full 360° coverage
-    fov?: number;
+    // field-of-view removed: towers always rotate to face targets
 }
 
 export interface EnemyConfig {

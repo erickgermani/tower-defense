@@ -58,31 +58,15 @@ export class Renderer {
                 // draw range (translucent)
                 this.ctx.save();
                 const rgb = hexToRgb(tower.color);
-                const cfg = towerConfigs[tower.type];
 
-                if (cfg && typeof cfg.fov === 'number' && cfg.fov > 0 && cfg.fov < Math.PI * 2) {
-                    // draw sector according to tower.angle and cfg.fov
-                    const start = tower.angle - cfg.fov / 2;
-                    const end = tower.angle + cfg.fov / 2;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(tower.x, tower.y);
-                    this.ctx.arc(tower.x, tower.y, tower.range, start, end);
-                    this.ctx.closePath();
-                    this.ctx.fillStyle = `rgba(${rgb}, 0.12)`;
-                    this.ctx.fill();
-                    this.ctx.lineWidth = 2;
-                    this.ctx.strokeStyle = `rgba(${rgb}, 0.28)`;
-                    this.ctx.stroke();
-                } else {
-                    // full circle fallback
-                    this.ctx.beginPath();
-                    this.ctx.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2);
-                    this.ctx.fillStyle = `rgba(${rgb}, 0.12)`;
-                    this.ctx.fill();
-                    this.ctx.lineWidth = 2;
-                    this.ctx.strokeStyle = `rgba(${rgb}, 0.28)`;
-                    this.ctx.stroke();
-                }
+                // Always draw full circular range (fov removed)
+                this.ctx.beginPath();
+                this.ctx.arc(tower.x, tower.y, tower.range, 0, Math.PI * 2);
+                this.ctx.fillStyle = `rgba(${rgb}, 0.12)`;
+                this.ctx.fill();
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeStyle = `rgba(${rgb}, 0.28)`;
+                this.ctx.stroke();
 
                 this.ctx.restore();
 
@@ -159,8 +143,7 @@ export class Renderer {
         this.statsEl.textContent =
             `Dinheiro: ${this.state.game.money} | ` +
             `Vida: ${this.state.game.lives} | ` +
-            `Wave: ${this.state.game.wave} | ` +
-            `Inimigos: ${this.state.getEnemyCount()}`;
+            `Wave: ${this.state.game.wave}`;
     }
 
     private lightenColor(color: string): string {

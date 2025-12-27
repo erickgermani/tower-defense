@@ -11,7 +11,6 @@ export class Projectile {
     public vy: number = 0;
     public damage: number;
     public radius: number = 4;
-    public alive: boolean = true;
     public color: string;
     public sourceType: TowerType;
     public speed: number;

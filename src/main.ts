@@ -3,7 +3,7 @@
 import { State } from './state.js';
 import { Tower } from './entities/Tower.js';
 import { TowerType } from './types.js';
-import { towerConfigs } from './config.js';
+import { towerConfigs, enemyConfigs } from './config.js';
 import { WaveManager } from './wave.js';
 import { GameUpdater } from './update.js';
 import { Renderer } from './render.js';
@@ -24,6 +24,8 @@ class Game {
     private resetBtn?: HTMLButtonElement;
     // ensure we only toggle game over UI once
     private gameOverDisplayed: boolean = false;
+    // store original prices so we can restore them on reset
+    private originalTowerPrices: Record<string, number> = {};
 
     constructor() {
         this.canvas = document.getElementById("c") as HTMLCanvasElement;
@@ -41,6 +43,14 @@ class Game {
         // ensure panel reference
         this.towerPanelDiv = document.getElementById('tower-panel') as HTMLDivElement;
         this.renderTowerPanel(null);
+
+        // Apply tower colors and labels to selector buttons for clarity
+        this.applyTowerButtonColors();
+        this.updateTowerButtonLabels();
+
+        // Ensure enemy cards reflect initial state
+        this.updateEnemyCards();
+
         this.start();
     }
 
@@ -58,10 +68,12 @@ class Game {
             }
         });
 
-        // Next wave button
+        // Next wave button - increment tower prices when a new wave starts
         const nextWaveBtn = document.getElementById("nextWave") as HTMLButtonElement;
         nextWaveBtn.addEventListener("click", () => {
             this.waveManager.startNextWave();
+            // increment prices so new towers get more expensive each wave
+            // this.incrementTowerPrices();
         });
 
         // Reset button (may be hidden in HTML)
@@ -208,6 +220,10 @@ class Game {
         this.state.game.money -= cost;
         const tower = new Tower(x, y, this.selectedTowerType);
         this.state.addTower(tower);
+        // Deselect placement after placing a tower
+        this.selectedTowerType = null;
+        State.getInstance().placementType = null;
+        this.updateTowerButtons();
     }
 
     private bindSelectors(): void {
@@ -250,6 +266,12 @@ class Game {
         });
         // sync placement type in state
         State.getInstance().placementType = this.selectedTowerType;
+        // update selected class for visual clarity
+        Object.values(TowerType).forEach(type => {
+            const btn = document.getElementById(`tower-${type}`) as HTMLButtonElement | null;
+            if (!btn) return;
+            if (this.selectedTowerType === type) btn.classList.add('selected'); else btn.classList.remove('selected');
+        });
     }
 
     private start(): void {
@@ -264,22 +286,24 @@ class Game {
             this.updater.update(dt);
             this.renderer.draw();
             this.renderer.updateHud();
+            // refresh enemy cards so they reflect current wave/plan
+            this.updateEnemyCards();
 
-            // If game over happened, show reset button and disable nextWave
-            if (this.state.game.gameOver && !this.gameOverDisplayed) {
-                this.gameOverDisplayed = true;
-                // disable next wave
-                try { nextWaveBtn.disabled = true; } catch {}
-                // show reset control
-                if (this.resetBtn) {
-                    this.resetBtn.style.display = '';
-                }
-            }
+             // If game over happened, show reset button and disable nextWave
+             if (this.state.game.gameOver && !this.gameOverDisplayed) {
+                 this.gameOverDisplayed = true;
+                 // disable next wave
+                 try { nextWaveBtn.disabled = true; } catch {}
+                 // show reset control
+                 if (this.resetBtn) {
+                     this.resetBtn.style.display = '';
+                 }
+             }
 
-            requestAnimationFrame(loop);
-        };
+             requestAnimationFrame(loop);
+         };
 
-        requestAnimationFrame(loop);
+         requestAnimationFrame(loop);
     }
 
     private showToastAt(clientX: number, clientY: number, text: string, ms = 1600) {
@@ -296,7 +320,7 @@ class Game {
         setTimeout(() => { try { el.remove(); } catch {} }, ms);
     }
 
-    // Reset the game state to initial values and restore UI
+    // Reset the game state to original values and restore UI
     private resetGame(): void {
         // Reset singleton state
         this.state.reset();
@@ -314,6 +338,130 @@ class Game {
         this.selectedTowerType = null;
         State.getInstance().placementType = null;
         this.renderTowerPanel(null);
+
+        // Restore original tower prices
+        Object.entries(this.originalTowerPrices).forEach(([key, value]) => {
+            const cfg = towerConfigs[key as TowerType];
+            if (cfg) cfg.cost = value;
+        });
+        this.updateTowerButtonLabels();
+    }
+
+    private applyTowerButtonColors(): void {
+        Object.values(TowerType).forEach(type => {
+            const btn = document.getElementById(`tower-${type}`) as HTMLButtonElement | null;
+            const cfg = towerConfigs[type as TowerType];
+            if (btn && cfg) {
+                btn.style.background = cfg.color;
+                // set text color based on brightness
+                const darkText = this.isColorLight(cfg.color);
+                btn.style.color = darkText ? '#000' : '#fff';
+            }
+        });
+    }
+
+    private updateTowerButtonLabels(): void {
+        Object.values(TowerType).forEach(type => {
+            const btn = document.getElementById(`tower-${type}`) as HTMLButtonElement | null;
+            const cfg = towerConfigs[type as TowerType];
+            if (!btn || !cfg) return;
+            btn.textContent = `${cfg.name} ($${cfg.cost})`;
+        });
+    }
+
+    private incrementTowerPrices(): void {
+        // Increase each tower cost by 10% (rounded) when a wave starts
+        const factor = 1.10;
+        Object.values(TowerType).forEach(type => {
+            const cfg = towerConfigs[type as TowerType];
+            if (!cfg) return;
+            cfg.cost = Math.max(1, Math.round(cfg.cost * factor));
+        });
+        this.updateTowerButtonLabels();
+    }
+
+    private isColorLight(hex: string): boolean {
+        const v = hex.replace('#','');
+        const r = parseInt(v.substr(0,2),16);
+        const g = parseInt(v.substr(2,2),16);
+        const b = parseInt(v.substr(4,2),16);
+        // luminance formula
+        const lum = 0.2126*r + 0.7152*g + 0.0722*b;
+        return lum > 160;
+    }
+
+    private updateEnemyCards(): void {
+        const e1Name = document.getElementById('enemy1-name');
+        const e1Hp = document.getElementById('enemy1-hp');
+        const e1Sp = document.getElementById('enemy1-speed');
+        const e1Rew = document.getElementById('enemy1-reward');
+        const e1Dot = document.getElementById('enemy1-dot') as HTMLElement | null;
+
+        const e2Name = document.getElementById('enemy2-name');
+        const e2Hp = document.getElementById('enemy2-hp');
+        const e2Sp = document.getElementById('enemy2-speed');
+        const e2Rew = document.getElementById('enemy2-reward');
+        const e2Dot = document.getElementById('enemy2-dot') as HTMLElement | null;
+
+        const card1 = document.getElementById('enemy-card-1') as HTMLElement | null;
+        const card2 = document.getElementById('enemy-card-2') as HTMLElement | null;
+
+        // Decide which wave to show: if in-wave show current, otherwise show next wave
+        const waveToShow = this.state.game.inWave ? this.state.game.wave : (this.state.game.wave + 1);
+        const plan = this.state.game.wavePlan;
+        const enemyTypes = plan?.enemyTypes ?? [];
+
+        // If no plan, try to infer two enemy types based on waveToShow using WaveManager logic approximation
+        let typesToShow: string[];
+        if (enemyTypes.length >= 2) {
+            typesToShow = enemyTypes as string[];
+        } else {
+            // fallback approximation mirroring wave.getEnemyTypesForWave rules
+            if (waveToShow <= 2) typesToShow = ['basic','basic'];
+            else if (waveToShow <= 4) typesToShow = ['basic','fast'];
+            else if (waveToShow <= 6) typesToShow = ['fast','fast'];
+            else if (waveToShow <= 8) typesToShow = ['fast','tank'];
+            else typesToShow = ['tank','tank'];
+        }
+
+        const computeAttributes = (typeKey: string) => {
+            const cfg = (enemyConfigs as any)[typeKey];
+            if (!cfg) return null;
+            const hp = cfg.baseHp + waveToShow * cfg.hpGrowth;
+            const speed = cfg.baseSpeed + waveToShow * cfg.speedGrowth;
+            const reward = Math.max(1, Math.floor(cfg.baseReward + Math.floor(waveToShow / 2) * cfg.rewardGrowth));
+            return { name: cfg.name, hp, speed, reward };
+        };
+
+        const a1 = computeAttributes(typesToShow[0]);
+        const a2 = computeAttributes(typesToShow[1]);
+
+        // Show first card if available
+        if (a1) {
+            if (card1) card1.classList.remove('hidden');
+            if (e1Name) e1Name.textContent = a1.name;
+            if (e1Hp) e1Hp.textContent = `HP: ${a1.hp}`;
+            if (e1Sp) e1Sp.textContent = `Velocidade: ${a1.speed}`;
+            if (e1Rew) e1Rew.textContent = `Recompensa: ${a1.reward}`;
+            if (e1Dot) e1Dot.style.background = (enemyConfigs as any)[typesToShow[0]]?.color ?? '#999';
+        } else {
+            if (card1) card1.classList.add('hidden');
+        }
+
+        // If the two types are identical, hide the second card (don't duplicate info)
+        const sameType = typesToShow[1] == null || typesToShow[0] === typesToShow[1];
+        if (sameType) {
+            if (card2) card2.classList.add('hidden');
+        } else {
+            if (card2) card2.classList.remove('hidden');
+            if (a2) {
+                if (e2Name) e2Name.textContent = a2.name;
+                if (e2Hp) e2Hp.textContent = `HP: ${a2.hp}`;
+                if (e2Sp) e2Sp.textContent = `Velocidade: ${a2.speed}`;
+                if (e2Rew) e2Rew.textContent = `Recompensa: ${a2.reward}`;
+                if (e2Dot) e2Dot.style.background = (enemyConfigs as any)[typesToShow[1]]?.color ?? '#999';
+            }
+        }
     }
 }
 

@@ -24,6 +24,11 @@ export class WaveManager {
         
         // Slower progression: fewer additional enemies per wave
         this.state.game.waveRemaining = 8 + this.state.game.wave; // slower increase
+
+        if (this.state.game.wave % 2 == 0) {
+            this.state.game.waveRemaining += 2; // small bonus every 2 waves
+        }
+
         this.state.game.waveSpawnTimer = 0;
         this.state.game.wavePlan = {
             // spawn interval decays more slowly and has a higher lower bound
@@ -38,11 +43,25 @@ export class WaveManager {
     }
 
     private getEnemyTypesForWave(wave: number): EnemyType[] {
-        // Return a single enemy type per wave. Mapping:
-        // waves 1-2 => BASIC, waves 3-4 => FAST, waves 5+ => TANK
-        if (wave <= 2) return [EnemyType.BASIC];
-        if (wave <= 4) return [EnemyType.FAST];
-        return [EnemyType.TANK];
+        if (wave <= 1) return [EnemyType.BASIC, EnemyType.BASIC];
+        if (wave <= 2) return [EnemyType.BASIC, EnemyType.FAST];
+        if (wave <= 3) return [EnemyType.BASIC, EnemyType.TANK];
+        if (wave <= 4) return [EnemyType.FLYER, EnemyType.FLYER];
+        if (wave <= 5) return [EnemyType.FAST, EnemyType.TANK];
+        if (wave <= 6) return [EnemyType.FLYER, EnemyType.TANK];
+        if (wave <= 7) return [EnemyType.TANK, EnemyType.TANK];
+        if (wave <= 8) return [EnemyType.BASIC, EnemyType.BASIC];
+        if (wave <= 9) return [EnemyType.FAST, EnemyType.FLYER];
+
+        if (wave % 3 == 0) {
+            return [EnemyType.FAST, EnemyType.TANK];
+        }
+
+        if (wave % 2 == 0) {
+            return [EnemyType.FAST, EnemyType.BASIC];
+        }
+
+        return [EnemyType.BASIC, EnemyType.BASIC];
     }
 
     public endWave(): void {

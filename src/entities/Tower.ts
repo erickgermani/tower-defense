@@ -23,6 +23,10 @@ export class Tower {
     public color: string;
     public name: string;
     public cost: number;
+    // transient current target (not persisted)
+    public target: Enemy | null = null;
+    // rotation speed in radians per second for smooth turning
+    private turnSpeed: number = Math.PI * 2; // full rotation in 1s by default
 
     constructor(x: number, y: number, type: TowerType) {
         const config = towerConfigs[type];
@@ -73,6 +77,22 @@ export class Tower {
     public update(dt: number): void {
         if (this.cooldown > 0) {
             this.cooldown -= dt;
+        }
+
+        // Smoothly rotate toward current target if any
+        if (this.target) {
+            const desired = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+            // normalize angle difference to [-PI, PI]
+            let diff = desired - this.angle;
+            while (diff <= -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+
+            const maxTurn = this.turnSpeed * dt;
+            if (Math.abs(diff) <= maxTurn) {
+                this.angle = desired;
+            } else {
+                this.angle += Math.sign(diff) * maxTurn;
+            }
         }
     }
 
